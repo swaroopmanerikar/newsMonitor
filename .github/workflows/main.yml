@@ -1,7 +1,7 @@
 name: newsMonitor
 on:
   schedule:
-    - cron: "*/15 * * * *"      # every 15 minutes (GitHub may start it a few minutes late)
+    - cron: "*/1 * * * *"      # every 15 minutes (GitHub may start it a few minutes late)
   workflow_dispatch:             # lets you also run it by hand from the Actions tab
 concurrency:
   group: newsMonitor
