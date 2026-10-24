@@ -1,1 +1,42 @@
+name: newsMonitor
+on:
+  schedule:
+    - cron: "*/15 * * * *"      # every 15 minutes (GitHub may start it a few minutes late)
+  workflow_dispatch:             # lets you also run it by hand from the Actions tab
+concurrency:
+  group: monitor
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      # database.db is kept on a separate branch called "data", so main stays clean
+      - name: Restore database
+        run: |
+          REPO="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}"
+          git clone --branch data --single-branch --depth 1 "$REPO" /tmp/data || {
+            mkdir /tmp/data && cd /tmp/data && git init -q -b data && git remote add origin "$REPO"; }
+          cp /tmp/data/database.db . 2>/dev/null || true
+
+      - run: python monitor.py
+
+      - name: Save database
+        run: |
+          cp database.db /tmp/data/database.db
+          cd /tmp/data
+          git config user.name "monitor-bot"
+          git config user.email "monitor-bot@users.noreply.github.com"
+          git add database.db
+          git commit -qm "crawl $(date -u +%FT%TZ)" || exit 0
+          git push origin data
 
